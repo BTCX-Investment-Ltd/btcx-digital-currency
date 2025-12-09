@@ -27,7 +27,7 @@ A fixed-supply ERC20 token with EIP-2612 permit functionality, built on battle-t
 - [Static Analysis](#static-analysis)
 - [Deployment](#deployment)
 - [Audit Information](#audit-information)
-- [License](#license)
+- [License](#)
 
 ---
 
