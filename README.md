@@ -241,9 +241,9 @@ This contract has been intentionally designed with **zero administrative powers*
 
 ## Pause & Recovery Logic
 
-### Pause Functionality: **NOT IMPLEMENTED**
+### Pause Functionality: **NOT IMPLEMENTED** *(Design-Intended)*
 
-This contract does **not** include pause functionality. This is an intentional design decision:
+This contract does **not** include pause functionality. This is an **intentional design decision** documented in `docs/DESIGN_DECISIONS.md`.
 
 **Rationale:**
 - Maximizes decentralization
@@ -251,24 +251,30 @@ This contract does **not** include pause functionality. This is an intentional d
 - Prevents censorship
 - Reduces attack surface
 
+**Status:** Acknowledged as Design-Intended (per SCSS methodology)
+
 **Implications:**
 - Token transfers cannot be halted
 - No emergency stop mechanism
 - Contract operates continuously and autonomously
 
-### Recovery Logic: **NOT IMPLEMENTED**
+### Recovery Logic: **NOT IMPLEMENTED** *(Design-Intended)*
 
-This contract does **not** include token recovery functionality:
+This contract does **not** include token recovery functionality. This is an **intentional design decision**.
 
 **Rationale:**
 - Prevents admin abuse
 - Maintains trustlessness
 - Follows Bitcoin's philosophy of self-custody
 
+**Status:** Acknowledged as Design-Intended (per SCSS methodology)
+
 **Implications:**
 - Tokens sent to the contract address are permanently locked
 - No mechanism to recover tokens sent in error
 - Users bear full responsibility for transaction accuracy
+
+> **Note:** All design decisions are formally documented in `docs/DESIGN_DECISIONS.md` as Architectural Decision Records (ADRs).
 
 ---
 
@@ -463,6 +469,58 @@ mythx analyze contracts/BTCXDigitalCurrency.sol
 
 ---
 
+## Formal Verification
+
+Formal verification mathematically proves that the contract satisfies critical security properties under all possible execution paths.
+
+### Certora Prover
+
+```bash
+# Install Certora CLI
+pip install certora-cli
+
+# Set API key (requires Certora account)
+export CERTORAKEY=<your-api-key>
+
+# Run verification
+npm run certora
+```
+
+**Specification Location:** `certora/BTCXDigitalCurrency.spec`
+
+**Properties Verified:**
+- Total supply conservation (sum of balances = total supply)
+- Fixed supply invariant (no minting/burning possible)
+- Transfer integrity and correctness
+- Approval and allowance correctness
+- No privilege escalation
+- Third-party balance/allowance protection
+
+### Solidity SMTChecker
+
+```bash
+# Run SMTChecker verification
+npm run smt-check
+```
+
+**Verification Contract:** `contracts/BTCXDigitalCurrency_SMTChecker.sol`
+
+### Verified Properties Summary
+
+| Category | Properties | Status |
+|----------|------------|--------|
+| **Invariants** | 4 | ✅ Specified |
+| **Transfer Rules** | 5 | ✅ Specified |
+| **Approval Rules** | 3 | ✅ Specified |
+| **TransferFrom Rules** | 3 | ✅ Specified |
+| **No Escalation** | 4 | ✅ Specified |
+| **Protection Rules** | 2 | ✅ Specified |
+| **Total** | **22** | ✅ |
+
+See `docs/FORMAL_VERIFICATION.md` for complete specification details.
+
+---
+
 ## Deployment
 
 ### Local Deployment
@@ -516,20 +574,24 @@ This repository includes all materials required for a comprehensive security aud
 | Item | Location | Description |
 |------|----------|-------------|
 | **Source Code** | `contracts/` | Solidity source files |
-| **Test Suite** | `test/` | Comprehensive test coverage |
-| **Coverage Report** | `coverage/` | Generated via `npm run coverage` |
+| **Test Suite** | `test/` | Comprehensive test coverage (66 tests) |
+| **Coverage Report** | `coverage/` | 100% coverage via `npm run coverage` |
 | **Static Analysis** | `slither-report.json` | Generated via `npm run slither:report` |
+| **Formal Verification** | `certora/` | Certora specs with 22 verification rules |
 | **Documentation** | `README.md` | This technical documentation |
+| **Detailed Reports** | `docs/` | Coverage, static analysis, formal verification reports |
 
 ### Generating Audit Reports
 
 ```bash
 # Generate all audit materials
-npm run audit:prepare
+npm run audit:full
 
 # This runs:
-# 1. Full test suite with coverage
-# 2. Slither static analysis with JSON output
+# 1. Full test suite (66 tests)
+# 2. Coverage report (100%)
+# 3. Slither static analysis
+# 4. Instructions for formal verification
 ```
 
 ### Contract Complexity

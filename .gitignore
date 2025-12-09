@@ -38,3 +38,8 @@ npm-debug.log*
 
 # Test
 .nyc_output/
+
+# Certora
+.certora_internal/
+.certora_config/
+certora_output/
