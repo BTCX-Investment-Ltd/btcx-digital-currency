@@ -1,0 +1,53 @@
+{
+  "name": "btcx-digital-currency",
+  "version": "1.0.0",
+  "description": "BTCX Digital Currency - ERC20 Token with Permit Extension",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "test:verbose": "hardhat test --verbose",
+    "coverage": "hardhat coverage",
+    "coverage:report": "hardhat coverage && open coverage/index.html",
+    "slither": "slither . --config-file slither.config.json",
+    "slither:report": "slither . --config-file slither.config.json --json slither-report.json",
+    "analyze": "npm run slither:report",
+    "audit:prepare": "npm run coverage && npm run slither:report",
+    "clean": "hardhat clean",
+    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
+    "verify": "hardhat verify"
+  },
+  "keywords": [
+    "ethereum",
+    "erc20",
+    "token",
+    "btcx",
+    "solidity",
+    "hardhat"
+  ],
+  "author": "BTCX Investment Ltd",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
+    "@nomicfoundation/hardhat-ethers": "^3.0.0",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.0",
+    "@openzeppelin/contracts": "^5.5.0",
+    "@typechain/ethers-v6": "^0.5.0",
+    "@typechain/hardhat": "^9.0.0",
+    "@types/chai": "^4.3.0",
+    "@types/mocha": "^10.0.0",
+    "chai": "^4.3.0",
+    "ethers": "^6.9.0",
+    "hardhat": "^2.19.0",
+    "hardhat-gas-reporter": "^1.0.0",
+    "solidity-coverage": "^0.8.0",
+    "typechain": "^8.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
