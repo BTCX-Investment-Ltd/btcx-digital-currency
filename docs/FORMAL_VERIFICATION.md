@@ -34,7 +34,7 @@ contracts/BTCXDigitalCurrency.sol
 | Property | Description | Status |
 |----------|-------------|--------|
 | `totalSupplyIsSumOfBalances` | Sum of all balances equals total supply | ✅ |
-| `fixedTotalSupply` | Total supply is immutable (1.2B tokens) | ✅ |
+| `fixedTotalSupply` | Total supply cannot increase (no minting) | ✅ |
 | `nonNegativeBalances` | All balances are non-negative | ✅ |
 | `balanceUpperBound` | No account holds more than total supply | ✅ |
 
@@ -70,7 +70,7 @@ contracts/BTCXDigitalCurrency.sol
 | Property | Description | Status |
 |----------|-------------|--------|
 | `noMinting` | No function can increase total supply | ✅ |
-| `noBurning` | No function can decrease total supply | ✅ |
+| `authorizedBurning` | Only burn/burnFrom can decrease supply | ✅ |
 | `balanceOnlyChangesViaTransfer` | Only transfer functions change balances | ✅ |
 | `allowanceOnlyChangesViaApprove` | Only approve/permit change allowances | ✅ |
 
@@ -210,9 +210,9 @@ rule thirdPartyBalanceProtection(address user, method f) {
 ## Security Properties Proven
 
 ### 1. Token Conservation
-- Total supply is immutable (1,200,000,000 × 10¹⁸)
+- Initial supply is 1,200,000,000 × 10¹⁸ (can decrease via burns)
 - No function can mint new tokens
-- No function can burn existing tokens
+- Only burn/burnFrom can reduce supply (user-controlled)
 - Sum of balances always equals total supply
 
 ### 2. Access Control

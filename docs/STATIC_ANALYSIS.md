@@ -55,7 +55,7 @@ npm run slither:report
 ### Contract Overview
 
 ```solidity
-contract BTCXDigitalCurrency is ERC20, ERC20Permit {
+contract BTCXDigitalCurrency is ERC20, ERC20Burnable, ERC20Permit {
     event InitialMint(address indexed recipient, uint256 amount);
 
     constructor(address recipient)
@@ -77,6 +77,8 @@ BTCXDigitalCurrency
 │   ├── IERC20
 │   ├── IERC20Metadata
 │   └── Context
+├── ERC20Burnable (OpenZeppelin v5.5.0) - Audited
+│   └── burn(), burnFrom()
 └── ERC20Permit (OpenZeppelin v5.5.0) - Audited
     ├── EIP712
     ├── IERC20Permit
@@ -135,7 +137,7 @@ The constructor does not explicitly validate that `recipient != address(0)`.
 | Check | Status | Notes |
 |-------|--------|-------|
 | No owner/admin roles | ✅ Pass | Fully decentralized |
-| No privileged functions | ✅ Pass | No mint/burn/pause |
+| No privileged functions | ✅ Pass | No mint/pause (burn is user-controlled) |
 | No upgrade mechanism | ✅ Pass | Immutable contract |
 
 ### Arithmetic

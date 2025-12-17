@@ -55,7 +55,7 @@ A fixed-supply ERC20 token with EIP-2612 permit functionality, built on battle-t
 | **Total Supply** | 1,200,000,000 BTCX |
 | **Initial Distribution** | 100% to specified recipient at deployment |
 | **Inflation** | None (fixed supply) |
-| **Deflation** | None (no burn mechanism) |
+| **Deflation** | Optional (ERC20Burnable - token holders can burn their own tokens) |
 
 ### Supply Breakdown
 
@@ -64,7 +64,7 @@ Total Supply: 1,200,000,000 BTCX (1.2 Billion)
 ├── Minted at deployment to recipient address
 ├── No vesting contracts in token contract
 ├── No minting function (supply is immutable)
-└── No burning function (supply is preserved)
+└── Burn function available (token holders can voluntarily burn)
 ```
 
 ### Token Distribution Model
@@ -93,6 +93,8 @@ BTCXDigitalCurrency
 │   ├── IERC20
 │   ├── IERC20Metadata
 │   └── Context
+├── ERC20Burnable (OpenZeppelin v5.5.0)
+│   └── Provides burn() and burnFrom()
 └── ERC20Permit (OpenZeppelin v5.5.0)
     ├── EIP712
     ├── IERC20Permit
@@ -118,9 +120,10 @@ BTCXDigitalCurrency
 pragma solidity ^0.8.27;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 
-contract BTCXDigitalCurrency is ERC20, ERC20Permit {
+contract BTCXDigitalCurrency is ERC20, ERC20Burnable, ERC20Permit {
     event InitialMint(address indexed recipient, uint256 amount);
 
     constructor(address recipient)
@@ -196,7 +199,7 @@ The contract has **no custom state variables**. All state is managed by inherite
 | **Owner** | ❌ No | No owner role |
 | **Admin** | ❌ No | No admin role |
 | **Minter** | ❌ No | No minting capability after deployment |
-| **Burner** | ❌ No | No burning capability |
+| **Burner** | ✅ Token Holders | Token holders can burn their own tokens |
 | **Pauser** | ❌ No | No pause capability |
 
 ### Permission Matrix
@@ -207,6 +210,8 @@ The contract has **no custom state variables**. All state is managed by inherite
 | `approve` | ✅ | ✅ | - |
 | `transferFrom` | - | - | ✅ |
 | `permit` | ✅ | ✅ | - |
+| `burn` | - | ✅ | - |
+| `burnFrom` | - | - | ✅ |
 | `balanceOf` | ✅ | ✅ | ✅ |
 | `allowance` | ✅ | ✅ | ✅ |
 
@@ -220,7 +225,7 @@ This contract has been intentionally designed with **zero administrative powers*
 
 - ❌ **No owner**: No `Ownable` inheritance
 - ❌ **No minting**: No `mint()` function
-- ❌ **No burning**: No `burn()` function
+- ✅ **Burning**: `burn()` and `burnFrom()` available (token holder controlled)
 - ❌ **No pausing**: No `Pausable` inheritance
 - ❌ **No blacklisting**: No address restriction mechanism
 - ❌ **No fee modification**: No transfer fees or fee adjustment
@@ -320,6 +325,8 @@ If governance is needed for the BTCX ecosystem:
 | `approve` | `spender`, `value` | Approve spender allowance |
 | `transferFrom` | `from`, `to`, `value` | Transfer using allowance |
 | `permit` | `owner`, `spender`, `value`, `deadline`, `v`, `r`, `s` | Gasless approval via signature |
+| `burn` | `value` | Burn caller's tokens (reduces total supply) |
+| `burnFrom` | `account`, `value` | Burn from account using allowance |
 
 ### Read Functions
 
@@ -426,8 +433,9 @@ open coverage/index.html
 | **Edge Cases** | 6 | Boundary conditions, security |
 | **Gas Optimization** | 3 | Gas usage verification |
 | **View Functions** | 5 | Read-only function tests |
+| **ERC20 Burnable** | 22 | burn, burnFrom, integration tests |
 
-**Total: 68+ test cases**
+**Total: 90+ test cases**
 
 ---
 
@@ -574,7 +582,7 @@ This repository includes all materials required for a comprehensive security aud
 | Item | Location | Description |
 |------|----------|-------------|
 | **Source Code** | `contracts/` | Solidity source files |
-| **Test Suite** | `test/` | Comprehensive test coverage (66 tests) |
+| **Test Suite** | `test/` | Comprehensive test coverage (90 tests) |
 | **Coverage Report** | `coverage/` | 100% coverage via `npm run coverage` |
 | **Static Analysis** | `slither-report.json` | Generated via `npm run slither:report` |
 | **Formal Verification** | `certora/` | Certora specs with 22 verification rules |

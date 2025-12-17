@@ -82,22 +82,28 @@ The contract has **NO** public or external mint function. All tokens are minted 
 
 ---
 
-## Decision 4: No Burn Function
+## Decision 4: Token Holder Controlled Burning (ERC20Burnable)
 
 ### Decision
-The contract does **NOT** implement token burning functionality.
+The contract implements **ERC20Burnable** allowing token holders to voluntarily burn their own tokens.
 
 ### Status
-**Acknowledged as Design-Intended**
+**Implemented - Industry Standard**
 
 ### Rationale
-1. **Supply Preservation**: Total supply remains constant
-2. **Simplicity**: Reduces attack surface
-3. **Predictability**: Token economics are fully deterministic
+1. **User Autonomy**: Token holders have full control over their tokens, including destruction
+2. **Deflationary Option**: Enables optional deflationary mechanics without admin control
+3. **Industry Standard**: Uses OpenZeppelin's battle-tested ERC20Burnable extension
+4. **No Admin Burn**: Only token holders can burn their own tokens (or via allowance)
 
-### Trade-off Acknowledged
-- ❌ Cannot implement deflationary mechanics
-- ✅ Simpler, more predictable token behavior
+### Functions Added
+- `burn(uint256 amount)` - Burn caller's own tokens
+- `burnFrom(address account, uint256 amount)` - Burn from account with allowance
+
+### Security Properties
+- ✅ No admin can burn user tokens without permission
+- ✅ Burning requires token ownership or explicit allowance
+- ✅ Standard Transfer event emitted to zero address for tracking
 
 ---
 
