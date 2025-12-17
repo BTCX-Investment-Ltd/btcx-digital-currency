@@ -46,7 +46,8 @@ All files                 |      100 |      100 |      100 |      100 |         
 | Edge Cases and Security | 5 | ✅ All Passing |
 | Gas Optimization | 3 | ✅ All Passing |
 | View Functions | 5 | ✅ All Passing |
-| **Total** | **66** | **✅ All Passing** |
+| **ERC20 Burnable** | 22 | ✅ All Passing |
+| **Total** | **90** | **✅ All Passing** |
 
 ---
 

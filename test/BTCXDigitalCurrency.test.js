@@ -783,4 +783,270 @@ describe("BTCXDigitalCurrency", function () {
       expect(await btcx.allowance(recipient.address, spender.address)).to.equal(amount);
     });
   });
+
+  // ============================================================
+  // ERC20 BURNABLE TESTS
+  // ============================================================
+  describe("ERC20 Burnable", function () {
+    describe("burn", function () {
+      it("Should burn tokens from caller's balance", async function () {
+        const { btcx, recipient } = await loadFixture(deployBTCXFixture);
+        const burnAmount = ethers.parseUnits("1000", DECIMALS);
+
+        const balanceBefore = await btcx.balanceOf(recipient.address);
+        await btcx.connect(recipient).burn(burnAmount);
+        const balanceAfter = await btcx.balanceOf(recipient.address);
+
+        expect(balanceAfter).to.equal(balanceBefore - burnAmount);
+      });
+
+      it("Should reduce total supply when burning", async function () {
+        const { btcx, recipient } = await loadFixture(deployBTCXFixture);
+        const burnAmount = ethers.parseUnits("1000", DECIMALS);
+
+        const totalSupplyBefore = await btcx.totalSupply();
+        await btcx.connect(recipient).burn(burnAmount);
+        const totalSupplyAfter = await btcx.totalSupply();
+
+        expect(totalSupplyAfter).to.equal(totalSupplyBefore - burnAmount);
+      });
+
+      it("Should emit Transfer event to zero address on burn", async function () {
+        const { btcx, recipient } = await loadFixture(deployBTCXFixture);
+        const burnAmount = ethers.parseUnits("1000", DECIMALS);
+
+        await expect(btcx.connect(recipient).burn(burnAmount))
+          .to.emit(btcx, "Transfer")
+          .withArgs(recipient.address, ethers.ZeroAddress, burnAmount);
+      });
+
+      it("Should burn zero tokens", async function () {
+        const { btcx, recipient } = await loadFixture(deployBTCXFixture);
+
+        await expect(btcx.connect(recipient).burn(0))
+          .to.emit(btcx, "Transfer")
+          .withArgs(recipient.address, ethers.ZeroAddress, 0);
+      });
+
+      it("Should burn entire balance", async function () {
+        const { btcx, recipient } = await loadFixture(deployBTCXFixture);
+
+        await btcx.connect(recipient).burn(TOTAL_SUPPLY);
+
+        expect(await btcx.balanceOf(recipient.address)).to.equal(0);
+        expect(await btcx.totalSupply()).to.equal(0);
+      });
+
+      it("Should fail burn exceeding balance", async function () {
+        const { btcx, recipient } = await loadFixture(deployBTCXFixture);
+        const excessAmount = TOTAL_SUPPLY + 1n;
+
+        await expect(btcx.connect(recipient).burn(excessAmount))
+          .to.be.revertedWithCustomError(btcx, "ERC20InsufficientBalance");
+      });
+
+      it("Should fail burn from account with zero balance", async function () {
+        const { btcx, alice } = await loadFixture(deployBTCXFixture);
+        const burnAmount = ethers.parseUnits("1", DECIMALS);
+
+        await expect(btcx.connect(alice).burn(burnAmount))
+          .to.be.revertedWithCustomError(btcx, "ERC20InsufficientBalance");
+      });
+
+      it("Should handle multiple sequential burns", async function () {
+        const { btcx, recipient } = await loadFixture(deployBTCXFixture);
+        const burnAmount = ethers.parseUnits("100", DECIMALS);
+
+        await btcx.connect(recipient).burn(burnAmount);
+        await btcx.connect(recipient).burn(burnAmount);
+        await btcx.connect(recipient).burn(burnAmount);
+
+        expect(await btcx.balanceOf(recipient.address)).to.equal(TOTAL_SUPPLY - burnAmount * 3n);
+        expect(await btcx.totalSupply()).to.equal(TOTAL_SUPPLY - burnAmount * 3n);
+      });
+
+      it("Should have reasonable gas cost for burn", async function () {
+        const { btcx, recipient } = await loadFixture(deployBTCXFixture);
+        const burnAmount = ethers.parseUnits("1000", DECIMALS);
+
+        const tx = await btcx.connect(recipient).burn(burnAmount);
+        const receipt = await tx.wait();
+
+        // Burn should be under 50000 gas
+        expect(receipt.gasUsed).to.be.lessThan(50000n);
+      });
+    });
+
+    describe("burnFrom", function () {
+      it("Should burn tokens from approved account", async function () {
+        const { btcx, recipient, spender } = await loadFixture(deployBTCXFixture);
+        const approvalAmount = ethers.parseUnits("1000", DECIMALS);
+        const burnAmount = ethers.parseUnits("500", DECIMALS);
+
+        await btcx.connect(recipient).approve(spender.address, approvalAmount);
+        await btcx.connect(spender).burnFrom(recipient.address, burnAmount);
+
+        expect(await btcx.balanceOf(recipient.address)).to.equal(TOTAL_SUPPLY - burnAmount);
+        expect(await btcx.allowance(recipient.address, spender.address)).to.equal(approvalAmount - burnAmount);
+      });
+
+      it("Should reduce total supply when using burnFrom", async function () {
+        const { btcx, recipient, spender } = await loadFixture(deployBTCXFixture);
+        const burnAmount = ethers.parseUnits("1000", DECIMALS);
+
+        await btcx.connect(recipient).approve(spender.address, burnAmount);
+        
+        const totalSupplyBefore = await btcx.totalSupply();
+        await btcx.connect(spender).burnFrom(recipient.address, burnAmount);
+        const totalSupplyAfter = await btcx.totalSupply();
+
+        expect(totalSupplyAfter).to.equal(totalSupplyBefore - burnAmount);
+      });
+
+      it("Should emit Transfer event to zero address on burnFrom", async function () {
+        const { btcx, recipient, spender } = await loadFixture(deployBTCXFixture);
+        const burnAmount = ethers.parseUnits("1000", DECIMALS);
+
+        await btcx.connect(recipient).approve(spender.address, burnAmount);
+
+        await expect(btcx.connect(spender).burnFrom(recipient.address, burnAmount))
+          .to.emit(btcx, "Transfer")
+          .withArgs(recipient.address, ethers.ZeroAddress, burnAmount);
+      });
+
+      it("Should not decrease allowance when max uint256 approved", async function () {
+        const { btcx, recipient, spender } = await loadFixture(deployBTCXFixture);
+        const maxUint256 = ethers.MaxUint256;
+        const burnAmount = ethers.parseUnits("1000", DECIMALS);
+
+        await btcx.connect(recipient).approve(spender.address, maxUint256);
+        await btcx.connect(spender).burnFrom(recipient.address, burnAmount);
+
+        expect(await btcx.allowance(recipient.address, spender.address)).to.equal(maxUint256);
+      });
+
+      it("Should fail burnFrom exceeding allowance", async function () {
+        const { btcx, recipient, spender } = await loadFixture(deployBTCXFixture);
+        const approvalAmount = ethers.parseUnits("100", DECIMALS);
+        const burnAmount = ethers.parseUnits("200", DECIMALS);
+
+        await btcx.connect(recipient).approve(spender.address, approvalAmount);
+
+        await expect(btcx.connect(spender).burnFrom(recipient.address, burnAmount))
+          .to.be.revertedWithCustomError(btcx, "ERC20InsufficientAllowance");
+      });
+
+      it("Should fail burnFrom exceeding balance", async function () {
+        const { btcx, recipient, spender } = await loadFixture(deployBTCXFixture);
+        const excessAmount = TOTAL_SUPPLY + 1n;
+
+        await btcx.connect(recipient).approve(spender.address, excessAmount);
+
+        await expect(btcx.connect(spender).burnFrom(recipient.address, excessAmount))
+          .to.be.revertedWithCustomError(btcx, "ERC20InsufficientBalance");
+      });
+
+      it("Should fail burnFrom without approval", async function () {
+        const { btcx, recipient, spender } = await loadFixture(deployBTCXFixture);
+        const burnAmount = ethers.parseUnits("100", DECIMALS);
+
+        await expect(btcx.connect(spender).burnFrom(recipient.address, burnAmount))
+          .to.be.revertedWithCustomError(btcx, "ERC20InsufficientAllowance");
+      });
+
+      it("Should handle burnFrom with exact allowance", async function () {
+        const { btcx, recipient, spender } = await loadFixture(deployBTCXFixture);
+        const amount = ethers.parseUnits("1000", DECIMALS);
+
+        await btcx.connect(recipient).approve(spender.address, amount);
+        await btcx.connect(spender).burnFrom(recipient.address, amount);
+
+        expect(await btcx.allowance(recipient.address, spender.address)).to.equal(0);
+        expect(await btcx.balanceOf(recipient.address)).to.equal(TOTAL_SUPPLY - amount);
+      });
+
+      it("Should handle zero amount burnFrom", async function () {
+        const { btcx, recipient, spender } = await loadFixture(deployBTCXFixture);
+        const approvalAmount = ethers.parseUnits("1000", DECIMALS);
+
+        await btcx.connect(recipient).approve(spender.address, approvalAmount);
+
+        await expect(btcx.connect(spender).burnFrom(recipient.address, 0))
+          .to.emit(btcx, "Transfer")
+          .withArgs(recipient.address, ethers.ZeroAddress, 0);
+      });
+
+      it("Should have reasonable gas cost for burnFrom", async function () {
+        const { btcx, recipient, spender } = await loadFixture(deployBTCXFixture);
+        const burnAmount = ethers.parseUnits("1000", DECIMALS);
+
+        await btcx.connect(recipient).approve(spender.address, burnAmount);
+
+        const tx = await btcx.connect(spender).burnFrom(recipient.address, burnAmount);
+        const receipt = await tx.wait();
+
+        // BurnFrom should be under 60000 gas
+        expect(receipt.gasUsed).to.be.lessThan(60000n);
+      });
+    });
+
+    describe("Burn Integration", function () {
+      it("Should allow permit followed by burnFrom", async function () {
+        const { btcx, recipient, spender } = await loadFixture(deployBTCXFixture);
+        const value = ethers.parseUnits("1000", DECIMALS);
+        const deadline = (await time.latest()) + 3600;
+
+        // Permit
+        const sig = await createPermitSignature(btcx, recipient, spender, value, deadline);
+        await btcx.permit(recipient.address, spender.address, value, deadline, sig.v, sig.r, sig.s);
+
+        // BurnFrom
+        await btcx.connect(spender).burnFrom(recipient.address, value);
+
+        expect(await btcx.balanceOf(recipient.address)).to.equal(TOTAL_SUPPLY - value);
+        expect(await btcx.allowance(recipient.address, spender.address)).to.equal(0);
+        expect(await btcx.totalSupply()).to.equal(TOTAL_SUPPLY - value);
+      });
+
+      it("Should maintain invariant: sum of balances equals total supply after burns", async function () {
+        const { btcx, recipient, alice, bob } = await loadFixture(deployBTCXFixture);
+        
+        // Distribute tokens
+        await btcx.connect(recipient).transfer(alice.address, ethers.parseUnits("100000000", DECIMALS));
+        await btcx.connect(recipient).transfer(bob.address, ethers.parseUnits("200000000", DECIMALS));
+        
+        // Burn from multiple accounts
+        const burnRecipient = ethers.parseUnits("10000000", DECIMALS);
+        const burnAlice = ethers.parseUnits("5000000", DECIMALS);
+        const burnBob = ethers.parseUnits("20000000", DECIMALS);
+        
+        await btcx.connect(recipient).burn(burnRecipient);
+        await btcx.connect(alice).burn(burnAlice);
+        await btcx.connect(bob).burn(burnBob);
+
+        // Sum all balances
+        const balanceRecipient = await btcx.balanceOf(recipient.address);
+        const balanceAlice = await btcx.balanceOf(alice.address);
+        const balanceBob = await btcx.balanceOf(bob.address);
+
+        const totalBalances = balanceRecipient + balanceAlice + balanceBob;
+        const totalSupply = await btcx.totalSupply();
+
+        expect(totalBalances).to.equal(totalSupply);
+        expect(totalSupply).to.equal(TOTAL_SUPPLY - burnRecipient - burnAlice - burnBob);
+      });
+
+      it("Should not allow third party to burn without allowance", async function () {
+        const { btcx, recipient, spender } = await loadFixture(deployBTCXFixture);
+        const burnAmount = ethers.parseUnits("1000", DECIMALS);
+
+        // Spender tries to burn recipient's tokens without approval
+        await expect(btcx.connect(spender).burnFrom(recipient.address, burnAmount))
+          .to.be.revertedWithCustomError(btcx, "ERC20InsufficientAllowance");
+
+        // Recipient's balance should be unchanged
+        expect(await btcx.balanceOf(recipient.address)).to.equal(TOTAL_SUPPLY);
+      });
+    });
+  });
 });

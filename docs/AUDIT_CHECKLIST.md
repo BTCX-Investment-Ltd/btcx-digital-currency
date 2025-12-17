@@ -12,7 +12,7 @@
 | Item | Status | Location |
 |------|--------|----------|
 | Source Code | ✅ Complete | `contracts/BTCXDigitalCurrency.sol` |
-| Test Suite | ✅ 66 Tests | `test/BTCXDigitalCurrency.test.js` |
+| Test Suite | ✅ 90 Tests | `test/BTCXDigitalCurrency.test.js` |
 | Coverage Report | ✅ 100% | `coverage/` & `docs/COVERAGE_REPORT.md` |
 | Static Analysis | ✅ Complete | `docs/STATIC_ANALYSIS.md` |
 | Formal Verification | ✅ 22 Rules | `certora/` & `docs/FORMAL_VERIFICATION.md` |
@@ -32,7 +32,7 @@ File                      |  % Stmts | % Branch |  % Funcs |  % Lines |
 --------------------------|----------|----------|----------|----------|
 ```
 
-**Total Tests:** 66 passing  
+**Total Tests:** 90 passing  
 **Coverage:** 100% across all metrics
 
 ---
@@ -46,7 +46,7 @@ File                      |  % Stmts | % Branch |  % Funcs |  % Lines |
 | Symbol | BTCX |
 | Decimals | 18 |
 | Total Supply | 1,200,000,000 (1.2 Billion) |
-| Standard | ERC20 + EIP-2612 |
+| Standard | ERC20 + ERC20Burnable + EIP-2612 |
 
 ### Technical Details
 | Property | Value |
@@ -70,7 +70,6 @@ File                      |  % Stmts | % Branch |  % Funcs |  % Lines |
 ### What the Contract DOES NOT HAVE:
 - ❌ Owner/admin roles
 - ❌ Minting capability
-- ❌ Burning capability
 - ❌ Pause functionality
 - ❌ Blacklist functionality
 - ❌ Fee mechanism
@@ -86,9 +85,13 @@ File                      |  % Stmts | % Branch |  % Funcs |  % Lines |
 contracts/BTCXDigitalCurrency.sol
 ```
 
+### What the Contract HAS (User-Controlled):
+- ✅ Burning capability (ERC20Burnable - token holders only)
+
 ### Dependencies (OpenZeppelin v5.5.0)
 ```
 @openzeppelin/contracts/token/ERC20/ERC20.sol
+@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol
 @openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol
 ```
 
@@ -196,7 +199,7 @@ contracts/BTCXDigitalCurrency.sol
 
 ### Test Suite
 ```
-test/BTCXDigitalCurrency.test.js (66 tests)
+test/BTCXDigitalCurrency.test.js (90 tests)
 ```
 
 ### Formal Verification

@@ -19,6 +19,10 @@ methods {
     function approve(address, uint256) external returns (bool);
     function transferFrom(address, address, uint256) external returns (bool);
     
+    // ERC20Burnable
+    function burn(uint256) external;
+    function burnFrom(address, uint256) external;
+    
     // ERC20 Metadata
     function name() external returns (string memory) envfree;
     function symbol() external returns (string memory) envfree;
@@ -62,15 +66,15 @@ invariant totalSupplyIsSumOfBalances()
     }
 
 /**
- * @title Fixed Supply Invariant
- * @notice Total supply is immutable after deployment (1.2 billion * 10^18)
- * @dev No mint or burn functions exist, supply cannot change
+ * @title Maximum Supply Invariant
+ * @notice Total supply cannot exceed initial supply (1.2 billion * 10^18)
+ * @dev No mint function exists, supply can only decrease via burns
  */
-invariant fixedTotalSupply()
-    totalSupply() == 1200000000000000000000000000
+invariant maxTotalSupply()
+    totalSupply() <= 1200000000000000000000000000
     {
         preserved {
-            // Supply is set in constructor and never changes
+            // Supply is set in constructor and can only decrease via burns
         }
     }
 
@@ -350,10 +354,13 @@ rule noMinting(method f) {
 }
 
 /**
- * @title No Unauthorized Burning
- * @notice No function can decrease total supply
+ * @title Authorized Burning Only
+ * @notice Only burn and burnFrom can decrease total supply
  */
-rule noBurning(method f) {
+rule authorizedBurningOnly(method f)
+    filtered { f -> f.selector != sig:burn(uint256).selector 
+                 && f.selector != sig:burnFrom(address,uint256).selector }
+{
     env e;
     calldataarg args;
     
@@ -363,8 +370,60 @@ rule noBurning(method f) {
     
     uint256 totalAfter = totalSupply();
     
-    assert totalAfter >= totalBefore,
-        "No function should decrease total supply";
+    assert totalAfter == totalBefore,
+        "Only burn/burnFrom should decrease total supply";
+}
+
+/**
+ * @title Burn Integrity
+ * @notice Burn correctly reduces caller's balance and total supply
+ */
+rule burnIntegrity(uint256 amount) {
+    env e;
+    
+    uint256 balanceBefore = balanceOf(e.msg.sender);
+    uint256 totalBefore = totalSupply();
+    
+    require balanceBefore >= amount;
+    
+    burn(e, amount);
+    
+    uint256 balanceAfter = balanceOf(e.msg.sender);
+    uint256 totalAfter = totalSupply();
+    
+    assert balanceAfter == balanceBefore - amount,
+        "Burn must decrease caller balance by amount";
+    assert totalAfter == totalBefore - amount,
+        "Burn must decrease total supply by amount";
+}
+
+/**
+ * @title BurnFrom Integrity
+ * @notice BurnFrom correctly reduces account balance, allowance, and total supply
+ */
+rule burnFromIntegrity(address account, uint256 amount) {
+    env e;
+    
+    uint256 balanceBefore = balanceOf(account);
+    uint256 totalBefore = totalSupply();
+    uint256 allowanceBefore = allowance(account, e.msg.sender);
+    
+    require balanceBefore >= amount;
+    require allowanceBefore >= amount;
+    require allowanceBefore < max_uint256; // Not infinite approval
+    
+    burnFrom(e, account, amount);
+    
+    uint256 balanceAfter = balanceOf(account);
+    uint256 totalAfter = totalSupply();
+    uint256 allowanceAfter = allowance(account, e.msg.sender);
+    
+    assert balanceAfter == balanceBefore - amount,
+        "BurnFrom must decrease account balance by amount";
+    assert totalAfter == totalBefore - amount,
+        "BurnFrom must decrease total supply by amount";
+    assert allowanceAfter == allowanceBefore - amount,
+        "BurnFrom must decrease allowance by amount";
 }
 
 /**
@@ -373,7 +432,9 @@ rule noBurning(method f) {
  */
 rule balanceOnlyChangesViaTransfer(method f, address account) 
     filtered { f -> f.selector != sig:transfer(address,uint256).selector 
-                 && f.selector != sig:transferFrom(address,address,uint256).selector } 
+                 && f.selector != sig:transferFrom(address,address,uint256).selector
+                 && f.selector != sig:burn(uint256).selector
+                 && f.selector != sig:burnFrom(address,uint256).selector } 
 {
     env e;
     calldataarg args;
@@ -385,7 +446,7 @@ rule balanceOnlyChangesViaTransfer(method f, address account)
     uint256 balanceAfter = balanceOf(account);
     
     assert balanceAfter == balanceBefore,
-        "Only transfer functions should change balances";
+        "Only transfer/burn functions should change balances";
 }
 
 /**
@@ -395,7 +456,8 @@ rule balanceOnlyChangesViaTransfer(method f, address account)
 rule allowanceOnlyChangesViaApprove(method f, address owner, address spender)
     filtered { f -> f.selector != sig:approve(address,uint256).selector
                  && f.selector != sig:permit(address,address,uint256,uint256,uint8,bytes32,bytes32).selector
-                 && f.selector != sig:transferFrom(address,address,uint256).selector }
+                 && f.selector != sig:transferFrom(address,address,uint256).selector
+                 && f.selector != sig:burnFrom(address,uint256).selector }
 {
     env e;
     calldataarg args;
@@ -407,7 +469,7 @@ rule allowanceOnlyChangesViaApprove(method f, address owner, address spender)
     uint256 allowanceAfter = allowance(owner, spender);
     
     assert allowanceAfter == allowanceBefore,
-        "Only approve/permit/transferFrom should change allowances";
+        "Only approve/permit/transferFrom/burnFrom should change allowances";
 }
 
 // ============================================================
@@ -432,10 +494,11 @@ rule thirdPartyBalanceProtection(address user, method f) {
     uint256 balanceAfter = balanceOf(user);
     
     // Balance can only decrease if:
-    // 1. It's a transferFrom with sufficient allowance
+    // 1. It's a transferFrom or burnFrom with sufficient allowance
     // 2. User is receiving tokens (balance increases)
     assert balanceAfter < balanceBefore => 
-        (f.selector == sig:transferFrom(address,address,uint256).selector && allowanceToSender > 0),
+        ((f.selector == sig:transferFrom(address,address,uint256).selector || 
+          f.selector == sig:burnFrom(address,uint256).selector) && allowanceToSender > 0),
         "Third party cannot decrease balance without allowance";
 }
 
